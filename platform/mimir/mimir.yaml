@@ -8,9 +8,10 @@ server:
   grpc_listen_port: 9095
   log_level: warn
 
-common:
-  storage:
-    backend: filesystem
+# Mimir writes some files relative to its working directory by default, which
+# isn't writable when it runs as a non-root user. Point them at the volume.
+activity_tracker:
+  filepath: /data/metrics-activity.log
 
 blocks_storage:
   backend: filesystem
@@ -43,6 +44,9 @@ ingester:
 store_gateway:
   sharding_ring:
     replication_factor: 1
+
+ruler:
+  rule_path: /data/ruler
 
 ruler_storage:
   backend: filesystem
