@@ -13,14 +13,31 @@ request link to each other.
 | 0 | Repo skeleton and resource check | Done |
 | 1 | Grafana and GitOps wiring | Done |
 | 2 | Metrics: Mimir, and Alloy as the collector | Done |
-| 3 | Logs: Loki | In progress |
-| 4 | Demo services in Go, instrumented with OpenTelemetry | Planned |
+| 3 | Logs: Loki | Done |
+| 4 | Demo services in Go, instrumented with OpenTelemetry | Next |
 | 5 | Traces: Tempo, with trace, log and metric correlation | Planned |
 | 6 | Profiles: Pyroscope, linked from traces | Planned |
 | 7 | Dashboards, alerts and an SLO as code, plus k6 load | Planned |
 | 8 | Write-up and architecture diagram | Planned |
 
-Phase notes are in [`docs/`](docs/).
+Phase notes are in [`docs/`](docs/):
+[1 Grafana](docs/phase-1-grafana.md) ·
+[2 Metrics](docs/phase-2-metrics.md) ·
+[3 Logs](docs/phase-3-logs.md)
+
+## What's running so far
+
+```
+kubelet / cAdvisor ────┐
+kube-state-metrics ────┤                ┌──> Mimir ───┐
+pod logs, k8s events ──┼──> Alloy ──────┤             ├──> Grafana
+Mimir, Alloy itself ───┘                └──> Loki  ───┘
+```
+
+| Endpoint | What |
+|---|---|
+| http://grafana.localhost | Grafana; dashboards in the Platform folder |
+| `kubectl -n observability port-forward deploy/alloy 12345:12345` | Alloy's pipeline UI |
 
 ## Runs on
 

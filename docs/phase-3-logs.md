@@ -51,8 +51,26 @@ In Grafana:
 
 ## Problems hit
 
-_None yet._
+None. Loki, the Alloy log pipeline, the datasource and the dashboard came up
+on the first sync.
 
 ## What I learned
 
-_Fill in after doing the phase._
+- **Labels are the index, not the content.** Loki indexes only the stream
+  labels and stores the log lines compressed. A handful of low-cardinality
+  labels (`namespace`, `app`, `container`) keeps it cheap; anything with many
+  values, like a log level or a trace ID, belongs in the line or in structured
+  metadata.
+- **One label scheme for all signals.** Using the same `namespace`, `pod`,
+  `container`, `app` and `cluster` labels as the metrics is what lets Grafana
+  move from a metric spike to the logs of the same pod.
+- **Where you read logs is a trade-off.** Tailing through the Kubernetes API
+  keeps Alloy a single Deployment with no host access, but every line goes
+  through the API server. At scale, a DaemonSet reading `/var/log/pods` on each
+  node is the usual choice.
+- **Kubernetes events are logs too.** Collecting them puts scheduling failures,
+  failed image pulls and OOM kills in the same place as application logs, with
+  their own retention instead of Kubernetes' one-hour default.
+- **Single-binary Loki is enough for a lab.** The same chart scales out to
+  separate read, write and backend paths with object storage when volume
+  demands it; the storage schema (`tsdb`, `v13`) stays the same.
