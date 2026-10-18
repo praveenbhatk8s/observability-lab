@@ -58,6 +58,15 @@ Open http://localhost:12345.
 In Grafana: Explore, datasource Mimir, query `up`. Every target should be `1`.
 Then open Dashboards, Platform, Cluster overview.
 
+## Problems hit
+
+**Mimir crash-looped with `open ./metrics-activity.log: permission denied`.**
+Mimir writes its activity tracker file (and the ruler's local rules) relative to
+its working directory by default. The pod runs as a non-root user that can't
+write there. Fix: `activity_tracker.filepath` and `ruler.rule_path` in
+`platform/mimir/mimir.yaml` now point into `/data`. The crash-looping pod had to
+be deleted once to pick up the new config.
+
 ## What I learned
 
 _Fill in after doing the phase._
