@@ -11,3 +11,6 @@ configMapGenerator:
   - name: dashboard-cluster-overview
     files:
       - cluster-overview.json
+  - name: dashboard-logs-overview
+    files:
+      - logs-overview.json

@@ -1,7 +1,7 @@
 # Grafana Alloy for observability-lab.
 # One replica, run as a Deployment. It discovers targets through the Kubernetes
-# API, so it doesn't need to run on every node. Later phases add logs (Phase 3)
-# and OTLP traces and profiles (Phases 5 and 6) to the same config.
+# API, so it doesn't need to run on every node. It collects metrics (Phase 2)
+# and logs (Phase 3); later phases add OTLP traces and profiles.
 
 controller:
   type: deployment
@@ -173,4 +173,74 @@ alloy:
         job_name   = "annotated-pods"
         targets    = discovery.relabel.annotated_pods.output
         forward_to = [prometheus.remote_write.mimir.receiver]
+      }
+
+      // ==================================================================
+      // Logs (Phase 3)
+      // ==================================================================
+      loki.write "loki" {
+        endpoint {
+          url = "http://loki.observability.svc:3100/loki/api/v1/push"
+        }
+        external_labels = {
+          cluster = "homelab",
+        }
+      }
+
+      // Every container in every pod, tailed through the Kubernetes API.
+      discovery.relabel "pod_logs" {
+        targets = discovery.kubernetes.pods.targets
+
+        rule {
+          source_labels = ["__meta_kubernetes_namespace"]
+          target_label  = "namespace"
+        }
+        rule {
+          source_labels = ["__meta_kubernetes_pod_name"]
+          target_label  = "pod"
+        }
+        rule {
+          source_labels = ["__meta_kubernetes_pod_container_name"]
+          target_label  = "container"
+        }
+        rule {
+          source_labels = ["__meta_kubernetes_pod_label_app_kubernetes_io_name"]
+          target_label  = "app"
+        }
+        rule {
+          source_labels = ["__meta_kubernetes_pod_node_name"]
+          target_label  = "node"
+        }
+        rule {
+          source_labels = ["__meta_kubernetes_namespace", "__meta_kubernetes_pod_container_name"]
+          separator     = "/"
+          target_label  = "job"
+        }
+      }
+
+      loki.source.kubernetes "pods" {
+        targets    = discovery.relabel.pod_logs.output
+        forward_to = [loki.process.pods.receiver]
+      }
+
+      loki.process "pods" {
+        // Pull the log level out of logfmt or JSON lines when present,
+        // as structured metadata rather than an index label.
+        stage.logfmt {
+          mapping = { "level" = "" }
+        }
+        stage.json {
+          expressions = { level = "level" }
+        }
+        stage.structured_metadata {
+          values = { level = "" }
+        }
+        forward_to = [loki.write.loki.receiver]
+      }
+
+      // Kubernetes events (scheduling, image pulls, OOM kills) as logs.
+      loki.source.kubernetes_events "events" {
+        job_name   = "kubernetes-events"
+        log_format = "logfmt"
+        forward_to = [loki.write.loki.receiver]
       }

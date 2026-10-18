@@ -11,9 +11,9 @@ request link to each other.
 | Phase | Topic | Status |
 |---|---|---|
 | 0 | Repo skeleton and resource check | Done |
-| 1 | Grafana and GitOps wiring | In progress |
-| 2 | Metrics: Mimir, and Alloy as the collector | Planned |
-| 3 | Logs: Loki | Planned |
+| 1 | Grafana and GitOps wiring | Done |
+| 2 | Metrics: Mimir, and Alloy as the collector | Done |
+| 3 | Logs: Loki | In progress |
 | 4 | Demo services in Go, instrumented with OpenTelemetry | Planned |
 | 5 | Traces: Tempo, with trace, log and metric correlation | Planned |
 | 6 | Profiles: Pyroscope, linked from traces | Planned |
@@ -52,7 +52,8 @@ where Grafana moved the Grafana and Tempo charts.
 |---|---|---|
 | Grafana | `grafana-community/grafana` 14.0.1 | 13.2.4 |
 | Alloy | `grafana/alloy` 1.13.1 | 1.20.1 |
-| Mimir | `grafana/mimir-distributed` 6.2.1 | 3.2.1 |
+| kube-state-metrics | `prometheus-community/kube-state-metrics` 8.6.0 | |
+| Mimir | plain manifests, image `grafana/mimir:3.2.1` (monolithic) | 3.2.1 |
 | Loki | `grafana/loki` 7.3.0 | 3.6.12 |
 | Tempo | `grafana-community/tempo` 3.2.0 | 3.1.0 |
 | Pyroscope | `grafana/pyroscope` 2.4.0 | 2.4.0 |
