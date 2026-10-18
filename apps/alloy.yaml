@@ -1,0 +1,26 @@
+# Grafana Alloy: the collector. Scrapes metrics and remote-writes them to Mimir.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: alloy
+  namespace: argocd
+spec:
+  project: default
+  sources:
+    - repoURL: https://grafana.github.io/helm-charts
+      chart: alloy
+      targetRevision: "1.13.1"
+      helm:
+        releaseName: alloy
+        valueFiles:
+          - $values/platform/alloy/values.yaml
+    - repoURL: https://github.com/praveenbhatk8s/observability-lab
+      targetRevision: main
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: observability
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

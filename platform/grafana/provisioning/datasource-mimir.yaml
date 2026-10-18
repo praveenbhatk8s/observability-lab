@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: datasource-mimir
+  namespace: observability
+  labels:
+    grafana_datasource: "1"
+data:
+  mimir.yaml: |
+    apiVersion: 1
+    datasources:
+      - name: Mimir
+        uid: mimir
+        type: prometheus
+        access: proxy
+        url: http://mimir.observability.svc:9009/prometheus
+        isDefault: true
+        jsonData:
+          prometheusType: Mimir
+          timeInterval: 60s

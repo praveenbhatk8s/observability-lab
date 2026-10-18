@@ -1,0 +1,19 @@
+# Mimir in monolithic mode (-target=all) with filesystem storage. Plain manifests, no chart.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: mimir
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/praveenbhatk8s/observability-lab
+    targetRevision: main
+    path: platform/mimir
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: observability
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

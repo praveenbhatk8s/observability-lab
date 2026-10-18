@@ -1,0 +1,19 @@
+# Grafana dashboards as code, from the dashboards/ folder.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: dashboards
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/praveenbhatk8s/observability-lab
+    targetRevision: main
+    path: dashboards
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: observability
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

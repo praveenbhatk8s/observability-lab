@@ -1,0 +1,26 @@
+# kube-state-metrics: object state (pods, deployments, restarts) as metrics.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kube-state-metrics
+  namespace: argocd
+spec:
+  project: default
+  sources:
+    - repoURL: https://prometheus-community.github.io/helm-charts
+      chart: kube-state-metrics
+      targetRevision: "8.6.0"
+      helm:
+        releaseName: kube-state-metrics
+        valueFiles:
+          - $values/platform/kube-state-metrics/values.yaml
+    - repoURL: https://github.com/praveenbhatk8s/observability-lab
+      targetRevision: main
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: observability
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

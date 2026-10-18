@@ -1,0 +1,176 @@
+# Grafana Alloy for observability-lab.
+# One replica, run as a Deployment. It discovers targets through the Kubernetes
+# API, so it doesn't need to run on every node. Later phases add logs (Phase 3)
+# and OTLP traces and profiles (Phases 5 and 6) to the same config.
+
+controller:
+  type: deployment
+  replicas: 1
+
+crds:
+  create: false
+
+alloy:
+  enableReporting: false
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      memory: 512Mi
+  configMap:
+    create: true
+    content: |
+      logging {
+        level = "info"
+      }
+
+      // ------------------------------------------------------------------
+      // Destination: Mimir
+      // ------------------------------------------------------------------
+      prometheus.remote_write "mimir" {
+        endpoint {
+          url = "http://mimir.observability.svc:9009/api/v1/push"
+        }
+        external_labels = {
+          cluster = "homelab",
+        }
+      }
+
+      // ------------------------------------------------------------------
+      // Kubelet and cAdvisor, reached through the API server proxy
+      // ------------------------------------------------------------------
+      discovery.kubernetes "nodes" {
+        role = "node"
+      }
+
+      discovery.relabel "kubelet" {
+        targets = discovery.kubernetes.nodes.targets
+
+        rule {
+          target_label = "__address__"
+          replacement  = "kubernetes.default.svc:443"
+        }
+        rule {
+          source_labels = ["__meta_kubernetes_node_name"]
+          target_label  = "__metrics_path__"
+          replacement   = "/api/v1/nodes/$1/proxy/metrics"
+        }
+        rule {
+          source_labels = ["__meta_kubernetes_node_name"]
+          target_label  = "node"
+        }
+      }
+
+      discovery.relabel "cadvisor" {
+        targets = discovery.kubernetes.nodes.targets
+
+        rule {
+          target_label = "__address__"
+          replacement  = "kubernetes.default.svc:443"
+        }
+        rule {
+          source_labels = ["__meta_kubernetes_node_name"]
+          target_label  = "__metrics_path__"
+          replacement   = "/api/v1/nodes/$1/proxy/metrics/cadvisor"
+        }
+        rule {
+          source_labels = ["__meta_kubernetes_node_name"]
+          target_label  = "node"
+        }
+      }
+
+      prometheus.scrape "kubelet" {
+        job_name          = "kubelet"
+        targets           = discovery.relabel.kubelet.output
+        scheme            = "https"
+        bearer_token_file = "/var/run/secrets/kubernetes.io/serviceaccount/token"
+        tls_config {
+          ca_file = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+        }
+        forward_to = [prometheus.remote_write.mimir.receiver]
+      }
+
+      prometheus.scrape "cadvisor" {
+        job_name          = "cadvisor"
+        targets           = discovery.relabel.cadvisor.output
+        scheme            = "https"
+        bearer_token_file = "/var/run/secrets/kubernetes.io/serviceaccount/token"
+        tls_config {
+          ca_file = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+        }
+        forward_to = [prometheus.remote_write.mimir.receiver]
+      }
+
+      // ------------------------------------------------------------------
+      // Fixed targets: kube-state-metrics and Mimir itself
+      // ------------------------------------------------------------------
+      prometheus.scrape "kube_state_metrics" {
+        job_name   = "kube-state-metrics"
+        targets    = [{"__address__" = "kube-state-metrics.observability.svc:8080"}]
+        forward_to = [prometheus.remote_write.mimir.receiver]
+      }
+
+      prometheus.scrape "mimir" {
+        job_name   = "mimir"
+        targets    = [{"__address__" = "mimir.observability.svc:9009"}]
+        forward_to = [prometheus.remote_write.mimir.receiver]
+      }
+
+      // ------------------------------------------------------------------
+      // Alloy's own metrics
+      // ------------------------------------------------------------------
+      prometheus.exporter.self "alloy" { }
+
+      prometheus.scrape "alloy" {
+        job_name   = "alloy"
+        targets    = prometheus.exporter.self.alloy.targets
+        forward_to = [prometheus.remote_write.mimir.receiver]
+      }
+
+      // ------------------------------------------------------------------
+      // Any pod annotated prometheus.io/scrape: "true"
+      // (used by the demo services from Phase 4)
+      // ------------------------------------------------------------------
+      discovery.kubernetes "pods" {
+        role = "pod"
+      }
+
+      discovery.relabel "annotated_pods" {
+        targets = discovery.kubernetes.pods.targets
+
+        rule {
+          source_labels = ["__meta_kubernetes_pod_annotation_prometheus_io_scrape"]
+          regex         = "true"
+          action        = "keep"
+        }
+        rule {
+          source_labels = ["__address__", "__meta_kubernetes_pod_annotation_prometheus_io_port"]
+          regex         = "([^:]+)(?::\\d+)?;(\\d+)"
+          replacement   = "$1:$2"
+          target_label  = "__address__"
+        }
+        rule {
+          source_labels = ["__meta_kubernetes_pod_annotation_prometheus_io_path"]
+          regex         = "(.+)"
+          target_label  = "__metrics_path__"
+        }
+        rule {
+          source_labels = ["__meta_kubernetes_namespace"]
+          target_label  = "namespace"
+        }
+        rule {
+          source_labels = ["__meta_kubernetes_pod_name"]
+          target_label  = "pod"
+        }
+        rule {
+          source_labels = ["__meta_kubernetes_pod_label_app_kubernetes_io_name"]
+          target_label  = "app"
+        }
+      }
+
+      prometheus.scrape "annotated_pods" {
+        job_name   = "annotated-pods"
+        targets    = discovery.relabel.annotated_pods.output
+        forward_to = [prometheus.remote_write.mimir.receiver]
+      }
