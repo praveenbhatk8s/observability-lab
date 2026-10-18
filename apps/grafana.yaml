@@ -1,0 +1,32 @@
+# Grafana, from the community-maintained chart (moved from grafana/helm-charts), with values kept in this repo.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: grafana
+  namespace: argocd
+spec:
+  project: default
+  sources:
+    - repoURL: https://grafana-community.github.io/helm-charts
+      chart: grafana
+      targetRevision: "14.0.1"
+      helm:
+        releaseName: grafana
+        valueFiles:
+          - $values/platform/grafana/values.yaml
+    - repoURL: https://github.com/praveenbhatk8s/observability-lab
+      targetRevision: main
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: observability
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    retry:
+      limit: 10
+      backoff:
+        duration: 30s
+        factor: 2
+        maxDuration: 5m

@@ -1,0 +1,23 @@
+# Grafana admin login, from Vault path secret/observability/grafana.
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: grafana-admin
+  namespace: observability
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    kind: ClusterSecretStore
+    name: vault
+  target:
+    name: grafana-admin
+    creationPolicy: Owner
+  data:
+    - secretKey: admin-user
+      remoteRef:
+        key: observability/grafana
+        property: admin-user
+    - secretKey: admin-password
+      remoteRef:
+        key: observability/grafana
+        property: admin-password

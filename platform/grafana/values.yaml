@@ -1,0 +1,49 @@
+# Grafana for observability-lab.
+# Everything is provisioned as code: datasources and dashboards come from
+# labelled ConfigMaps, picked up by the chart's sidecars. Nothing is stored in
+# Grafana's own database that you would miss after a restart.
+
+admin:
+  existingSecret: grafana-admin
+  userKey: admin-user
+  passwordKey: admin-password
+
+ingress:
+  enabled: true
+  ingressClassName: traefik
+  hosts:
+    - grafana.localhost
+
+persistence:
+  enabled: false
+
+grafana.ini:
+  server:
+    root_url: http://grafana.localhost
+  analytics:
+    reporting_enabled: false
+    check_for_updates: false
+  users:
+    default_theme: dark
+
+sidecar:
+  datasources:
+    enabled: true
+    label: grafana_datasource
+    labelValue: "1"
+    searchNamespace: observability
+  dashboards:
+    enabled: true
+    label: grafana_dashboard
+    labelValue: "1"
+    searchNamespace: observability
+    folderAnnotation: grafana_folder
+    provider:
+      foldersFromFilesStructure: true
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 128Mi
+  limits:
+    memory: 384Mi
